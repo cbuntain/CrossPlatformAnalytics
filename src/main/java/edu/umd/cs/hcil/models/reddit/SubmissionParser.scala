@@ -38,11 +38,12 @@ object SubmissionParser {
                                permalink : String,
                                score : Long,
                                selftext : String,
-                               subreddit : String,
-                               subreddit_id : String,
+                               subreddit : Option[String],
+                               subreddit_id : Option[String],
                                thumbnail : String,
                                title : String,
                                url : String
-                             )
+
+                             ) extends RedditModel
 
 }

@@ -1,5 +1,6 @@
 package edu.umd.cs.hcil.analytics.spark.topics
 
+import edu.umd.cs.hcil.models.fourchan.ThreadParser
 import edu.umd.cs.hcil.models.reddit.SubmissionParser
 import edu.umd.cs.hcil.models.twitter.TweetParser
 import org.apache.spark.ml.feature.CountVectorizerModel
@@ -17,6 +18,7 @@ object EvaluateModelPurity {
 
   case class Config(inputTwitterDataPath : String = "",
                     inputRedditDataPath : String = "",
+                    input4chanDataPath : String = "",
                     inputModelPath : String = "",
                     inputVectorPath : String = "",
                     stopwordFile : String = "",
@@ -36,6 +38,11 @@ object EvaluateModelPurity {
       .valueName("<file>")
       .action( (x, c) => {c.copy(inputRedditDataPath = x)} )
       .text("Input data file for Reddit")
+
+    opt[String]('f', "4chan").required()
+      .valueName("<file>")
+      .action( (x, c) => {c.copy(input4chanDataPath = x)} )
+      .text("Input data file for 4chan")
 
     opt[String]('m', "model").required()
       .valueName("<file>")
@@ -78,6 +85,7 @@ object EvaluateModelPurity {
 
     val twitterDataPath = argConf.inputTwitterDataPath
     val redditDataPath = argConf.inputRedditDataPath
+    val fourchanDataPath = argConf.input4chanDataPath
     val modelPath = argConf.inputModelPath
     val vectorizerPath = argConf.inputVectorPath
     val stopwordPath = argConf.stopwordFile
@@ -180,12 +188,53 @@ object EvaluateModelPurity {
     val redditTopicCounts = redditMaxTopicAssignments.map(topic => (topic, 1)).reduceByKey((l, r) => l+r).collect.toMap
 
 
-    println("Topic,Twitter,Reddit")
+    // Read in 4chan data
+    val fourchanMessagesRaw = sc.textFile(fourchanDataPath)
+    println("Initial 4chan Partition Count: " + fourchanMessagesRaw.partitions.size)
+
+    // Repartition if desired using the new partition count
+    val fourchanMessages = if ( argConf.numPartitions > 0 ) {
+      val initialPartitions = argConf.numPartitions
+      fourchanMessagesRaw.repartition(initialPartitions)
+    } else {
+      fourchanMessagesRaw
+    }
+
+    // Convert each JSON line in the file to a submission
+    val fourchanTextFields : RDD[String] = fourchanMessages.map(line => {
+      val thread = ThreadParser.parseJson(line)
+      if ( thread != null && thread.posts != null && thread.posts.length > 0 && thread.posts.head != null) {
+        ThreadParser.getPlainText(thread.posts.head)
+      } else {
+        null
+      }
+    }).filter(sub => sub != null)
+
+    val fourchanSampleData = if ( argConf.sampleSize > 0 ) {
+      val proportion = argConf.sampleSize.toDouble / fourchanTextFields.count.toDouble
+      fourchanTextFields.sample(withReplacement = true, fraction = proportion).zipWithUniqueId().map(tup => tup.swap)
+    } else {
+      fourchanTextFields.zipWithUniqueId().map(tup => tup.swap)
+    }
+
+    val fourchanFilteredTokens = TopicModelLDA.textToVector(fourchanSampleData, stopwords, sc)
+    val fourchanDocuments = cvModel.transform(fourchanFilteredTokens)
+      .select("docId", "features")
+      .rdd
+      .map { case Row(docId: Long, features: MLVector) => (docId, Vectors.fromML(features)) }
+      .cache()
+
+    val fourchanMaxTopicAssignments = localModel.topicDistributions(fourchanDocuments).map(tup => tup._2.argmax)
+    val fourchanTopicCounts = fourchanMaxTopicAssignments.map(topic => (topic, 1)).reduceByKey((l, r) => l+r).collect.toMap
+
+
+    println("Topic,Twitter,Reddit,4chan")
     for ( topicIndex <- 0 until localModel.k ) {
-      println("%d,%d,%d".format(
+      println("%d,%d,%d,%d".format(
         topicIndex,
         twitterTopicCounts.getOrElse(topicIndex,0),
-        redditTopicCounts.getOrElse(topicIndex, 0)
+        redditTopicCounts.getOrElse(topicIndex, 0),
+        fourchanTopicCounts.getOrElse(topicIndex, 0)
       ))
     }
   }

@@ -61,7 +61,7 @@ object MultiNetTopicModeler {
         }
       } else if ( line.contains("\"resto\"") ) {  // Test for 4chan data
         val thread = ThreadParser.parseJson(line)
-        if ( thread.posts != null ) {
+        if ( thread.posts != null && thread.posts.length > 0 ) {
           ThreadParser.getPlainText(thread.posts.head)
         } else {
           null

@@ -1,6 +1,7 @@
 package edu.umd.cs.hcil.analytics.utils
 
-import java.util.{Calendar, Date}
+import java.text.SimpleDateFormat
+import java.util.{Calendar, Date, Locale}
 
 /**
   * Created by cbuntain on 7/20/17.
@@ -61,5 +62,41 @@ object TimeScale extends Enumeration {
     l = l :+ endDate
 
     return l
+  }
+
+  /**
+    * Convert a string switch to the corresponding scale value
+    *
+    * @param timeScaleStr The string argument to convert
+    *
+    */
+  def switchToScale(timeScaleStr : String) : Option[TimeScale.Value] = {
+    // Validate and set time scale
+    val timeScale : Option[TimeScale.Value] = if ( timeScaleStr == "-m" ) {
+      Some(TimeScale.MINUTE)
+    } else if ( timeScaleStr == "-h" ) {
+      Some(TimeScale.HOURLY)
+    } else if ( timeScaleStr == "-d" ) {
+      Some(TimeScale.DAILY)
+    } else {
+      None
+    }
+
+    return timeScale
+  }
+
+  // Twitter's time format'
+  def TIME_FORMAT = "EEE MMM d HH:mm:ss Z yyyy"
+
+  /**
+    * Convert a given date into a string using TIME_FORMAT
+    *
+    * @param date The date to convert
+    */
+  def dateFormatter(date : Date) : String = {
+    val sdf = new SimpleDateFormat(TIME_FORMAT, Locale.US);
+    sdf.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+
+    sdf.format(date)
   }
 }
