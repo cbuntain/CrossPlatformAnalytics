@@ -43,20 +43,21 @@ object RedditTokenizer {
 
     val tokens = if ( text != null ) {
 
-      val links = linkExtractor.extractLinks(text).iterator().asScala.toArray
+      val unescapedText = org.apache.commons.lang3.StringEscapeUtils.unescapeHtml4(text)
+      val links = linkExtractor.extractLinks(unescapedText).iterator().asScala.toArray
 
       var tokensTmp = Array[String]()
 
       var lastIndex = 0
       for ( link <- links ) {
-        val substr = text.substring(lastIndex, link.getBeginIndex)
+        val substr = unescapedText.substring(lastIndex, link.getBeginIndex)
 
-        tokensTmp = tokensTmp ++ tokenizeString(substr) :+ text.substring(link.getBeginIndex, link.getEndIndex)
+        tokensTmp = tokensTmp ++ tokenizeString(substr) :+ unescapedText.substring(link.getBeginIndex, link.getEndIndex)
 
         lastIndex = link.getEndIndex
       }
 
-      tokensTmp ++ tokenizeString(text.substring(lastIndex, text.length))
+      tokensTmp ++ tokenizeString(unescapedText.substring(lastIndex, unescapedText.length))
     } else {
       Array[String]()
     }
