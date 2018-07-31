@@ -12,14 +12,11 @@ object CommentParser {
   implicit val formats = DefaultFormats
 
   def parseJson(commentJson : String): CommentModel = {
-    val jsonNode = parse(commentJson, false)
     try {
+      val jsonNode = parse(commentJson, false)
       jsonNode.extract[CommentModel]
     } catch {
       case e : Exception => {
-        if ( true ) {
-          println(e)
-        }
         null
       }
     }
@@ -41,5 +38,9 @@ object CommentParser {
                                subreddit : Option[String],
                                subreddit_id : Option[String]
 
-                             ) extends RedditModel
+                             ) extends RedditModel {
+    def text : Option[String] = {
+      Some(body)
+    }
+  }
 }

@@ -11,4 +11,5 @@ trait RedditModel {
   def score: Long
   def subreddit: Option[String]
   def subreddit_id: Option[String]
+  def text: Option[String]
 }

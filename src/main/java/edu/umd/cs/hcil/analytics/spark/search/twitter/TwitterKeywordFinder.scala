@@ -1,17 +1,16 @@
-package edu.umd.cs.hcil.analytics.spark.search.reddit
+package edu.umd.cs.hcil.analytics.spark.search.twitter
 
-import edu.umd.cs.hcil.models.reddit.{CommentParser, RedditModel, SubmissionParser}
+import edu.umd.cs.hcil.models.reddit.SubmissionParser
 import edu.umd.cs.hcil.models.reddit.SubmissionParser.SubmissionModel
-import org.apache.lucene.analysis.standard.StandardAnalyzer
-import org.apache.lucene.index.memory.MemoryIndex
-import org.apache.lucene.queryparser.flexible.standard.StandardQueryParser
+import edu.umd.cs.hcil.models.twitter.TweetParser
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
+import twitter4j.Status
 
 /**
   * Created by cbuntain on 9/14/17.
   */
-object RedditKeywordFinder {
+object TwitterKeywordFinder {
 
 
   /**
@@ -41,28 +40,26 @@ object RedditKeywordFinder {
       println("New Partition Count: " + messages.partitions.size)
     }
 
-    // Convert each JSON line in the file to a submission
-    val textFields : RDD[(String, RedditModel)] = messages.map(line => {
+    // Convert each JSON line in the file to a status
+    val items : RDD[(String, Status)] = messages.map(line => {
 
-      if ( line.contains("subreddit_id") ) {  // Test for Reddit data
-        val submission : RedditModel = SubmissionParser.parseJson(line)
-        (line, submission)
-      } else {
-        val comment : RedditModel = CommentParser.parseJson(line)
-        (line, comment)
-      }
-    }).filter(sub => sub != null && sub._2 != null && sub._2.text.getOrElse("").length > 0)
+      (line, TweetParser.parseJson(line))
+    }).filter(statusTuple => statusTuple != null && statusTuple._2 != null)
 
-    val relevantJson = keywordFilter(keywords, textFields).map(pair => pair._1)
+    val relevantJson = keywordFilter(keywords, items).map(pair => pair._1)
 
     relevantJson.saveAsTextFile(outputPath, classOf[org.apache.hadoop.io.compress.GzipCodec])
   }
 
-  def keywordFilter(keywords : Array[Array[String]], items : RDD[(String, RedditModel)]) : RDD[(String, RedditModel)] = {
+  def keywordFilter(keywords : Array[Array[String]], items : RDD[(String, Status)]) : RDD[(String, Status)] = {
 
     items.filter(statusTup => {
-      val item = statusTup._2
-      val text = item.text.getOrElse("").toLowerCase
+      val status = statusTup._2
+      val text = status.getText + ", " + (if (status.isRetweet) {
+        status.getRetweetedStatus.getText
+      } else {
+        ""
+      }).toLowerCase
 
       val intersection = keywords.filter(k_list => k_list.filter(k => text.contains(k)).length == k_list.length)
 

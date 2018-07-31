@@ -12,14 +12,11 @@ object SubmissionParser {
   implicit val formats = DefaultFormats
 
   def parseJson(submissionJson : String): SubmissionModel = {
-    val jsonNode = parse(submissionJson, false)
     try {
+      val jsonNode = parse(submissionJson, false)
       jsonNode.extract[SubmissionModel]
     } catch {
       case e : Exception => {
-        if ( true ) {
-          println(e)
-        }
         null
       }
     }
@@ -44,6 +41,11 @@ object SubmissionParser {
                                title : String,
                                url : String
 
-                             ) extends RedditModel
+                             ) extends RedditModel {
+
+    def text : Option[String] = {
+      Some(title + (if ( is_self ) { "," + selftext } else { "" }))
+    }
+  }
 
 }

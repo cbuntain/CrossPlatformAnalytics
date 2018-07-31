@@ -40,6 +40,7 @@
             <id>bintray</id>
             <url>https://jcenter.bintray.com</url>
         </repository>
+
     </repositories>
 
     <pluginRepositories>
@@ -102,22 +103,27 @@
         <dependency>
             <groupId>org.apache.lucene</groupId>
             <artifactId>lucene-core</artifactId>
-            <version>6.6.1</version>
+            <version>7.4.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.lucene</groupId>
             <artifactId>lucene-analyzers-common</artifactId>
-            <version>6.6.1</version>
+            <version>7.4.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.lucene</groupId>
+            <artifactId>lucene-analyzers-icu</artifactId>
+            <version>7.4.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.lucene</groupId>
             <artifactId>lucene-memory</artifactId>
-            <version>6.6.1</version>
+            <version>7.4.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.lucene</groupId>
             <artifactId>lucene-queryparser</artifactId>
-            <version>6.6.1</version>
+            <version>7.4.0</version>
         </dependency>
 
         <!-- For extracting links from text -->

@@ -1,25 +1,25 @@
-package edu.umd.cs.hcil.analytics.spark.search.reddit
+package edu.umd.cs.hcil.analytics.spark.search.twitter
 
-import edu.umd.cs.hcil.models.reddit.SubmissionParser
-import edu.umd.cs.hcil.models.reddit.SubmissionParser.SubmissionModel
+import edu.umd.cs.hcil.models.twitter.TweetParser
+import twitter4j.Status
 import org.apache.lucene.analysis.standard.StandardAnalyzer
 import org.apache.lucene.index.memory.MemoryIndex
 import org.apache.lucene.queryparser.flexible.standard.StandardQueryParser
 import org.apache.lucene.queryparser.flexible.standard.config.StandardQueryConfigHandler
-import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
+import org.apache.spark.{SparkConf, SparkContext}
 
 /**
   * Created by cbuntain on 9/14/17.
   */
-object RedditQuery {
+object TwitterQuery {
 
 
   /**
     * @param args the command line arguments
     */
   def main(args: Array[String]): Unit = {
-    val conf = new SparkConf().setAppName("Lucene Reddit Query")
+    val conf = new SparkConf().setAppName("Lucene Tweet Query")
     val sc = new SparkContext(conf)
 
     val dataPath = args(0)
@@ -42,28 +42,22 @@ object RedditQuery {
       println("New Partition Count: " + messages.partitions.size)
     }
 
-    // Convert each JSON line in the file to a submission
-    val textFields : RDD[(String, SubmissionModel)] = messages.map(line => {
+    // Convert each JSON line in the file to a status
+    val textFields : RDD[(String, Status)] = messages.map(line => {
 
-      if ( line.contains("subreddit_id") ) {  // Test for Reddit data
-        val submission = SubmissionParser.parseJson(line)
-        (line, submission)
-      } else {
-        null
-      }
-    }).filter(sub => sub != null && sub._2 != null && sub._2.title.length > 0)
+      (line, TweetParser.parseJson(line))
+    }).filter(statusTuple => statusTuple != null && statusTuple._2 != null)
 
     val relevantJson = querier(queries, textFields, 0d).map(pair => pair._1)
 
     relevantJson.saveAsTextFile(outputPath, classOf[org.apache.hadoop.io.compress.GzipCodec])
   }
 
-  def querier(queries : List[String], statusList : RDD[(String,SubmissionModel)], threshold : Double) : RDD[(String,SubmissionModel)] = {
+  def querier(queries : List[String], statusList : RDD[(String,Status)], threshold : Double) : RDD[(String,Status)] = {
     return querier(queries, statusList, threshold, StandardQueryConfigHandler.Operator.AND)
   }
 
-  def querier(queries : List[String], statusList : RDD[(String,SubmissionModel)], threshold : Double, op : StandardQueryConfigHandler.Operator) : RDD[(String,SubmissionModel)] = {
-
+  def querier(queries : List[String], statusList : RDD[(String,Status)], threshold : Double, op : StandardQueryConfigHandler.Operator) : RDD[(String,Status)] = {
     // Pseudo-Relevance feedback
     val scoredPairs = statusList.mapPartitions(iter => {
       // Construct an analyzer for our tweet text
@@ -74,8 +68,8 @@ object RedditQuery {
       parser.setDefaultOperator(op)
 
       iter.map(pair => {
-        val submission = pair._2
-        val text = submission.title + ", " + (if ( submission.selftext != null ) { submission.selftext } else { "" })
+        val status = pair._2
+        val text = status.getText + ", " + (if ( status.isRetweet ) { status.getRetweetedStatus.getText } else { "" })
 
         // Construct an in-memory index for the tweet data
         val idx = new MemoryIndex()
