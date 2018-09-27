@@ -55,11 +55,11 @@ object TwitterKeywordFinder {
 
     items.filter(statusTup => {
       val status = statusTup._2
-      val text = status.getText + ", " + (if (status.isRetweet) {
+      val text = (status.getText + ", " + (if (status.isRetweet) {
         status.getRetweetedStatus.getText
       } else {
         ""
-      }).toLowerCase
+      })).toLowerCase
 
       val intersection = keywords.filter(k_list => k_list.filter(k => text.contains(k)).length == k_list.length)
 
