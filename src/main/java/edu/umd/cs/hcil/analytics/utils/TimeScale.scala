@@ -94,8 +94,8 @@ object TimeScale extends Enumeration {
     * @param date The date to convert
     */
   def dateFormatter(date : Date) : String = {
-    val sdf = new SimpleDateFormat(TIME_FORMAT, Locale.US);
-    sdf.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+    val sdf = new SimpleDateFormat(TIME_FORMAT, Locale.US)
+    sdf.setTimeZone(java.util.TimeZone.getTimeZone("UTC"))
 
     sdf.format(date)
   }

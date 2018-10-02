@@ -32,7 +32,30 @@ object TwitterTokenizer {
     return tokens
   }
 
-  def tokenize(tweet: Status) : Array[String] = {
+  def tokenize(tweet: Status, makeBigrams : Boolean = false, preserveCase : Boolean = true) : Array[String] = {
+    val unigrams_ = tokenize_unigrams(tweet)
+
+    val unigrams : Array[String] = if ( preserveCase ) {
+      unigrams_
+    } else {
+      unigrams_.map(t => {
+        if ( t.startsWith("http") ) {
+          t
+        } else {
+          t.toLowerCase()
+        }
+      })
+    }
+
+    if ( makeBigrams ) {
+      val bigrams = unigrams.sliding(2).filter(arr => arr.length > 1).map(arr => arr(0) + "_" + arr(1)).toArray
+      (unigrams ++ bigrams)
+    } else {
+      unigrams
+    }
+  }
+
+  def tokenize_unigrams(tweet: Status) : Array[String] = {
 
     val text = tweet.getText
 
