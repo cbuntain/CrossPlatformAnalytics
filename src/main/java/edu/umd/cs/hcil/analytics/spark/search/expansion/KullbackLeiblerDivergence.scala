@@ -74,8 +74,7 @@ object KullbackLeiblerDivergence {
     // unpersist things we don't need
     foregroundData.unpersist(true)
 
-    this.background = backTokens
-    val divergence = score(foreTokens).sortBy(tup => tup._2, false).take(topK)
+    val divergence = score(foreTokens, backTokens).sortBy(tup => tup._2, false).take(topK)
 
     println("Top " + topK + " divergent keywords:")
     for ( tokenTup <- divergence ) {
@@ -84,30 +83,13 @@ object KullbackLeiblerDivergence {
   }
 
   /**
-    * Background model needed for comparison against foreground model
-    */
-  var background : RDD[(String, Int)] = null
-
-  /**
-    * Need to specify the background model for this class
-    *
-    * @param background RDD of background tokens and counts
-    */
-  def setBackground(background : RDD[(String, Int)]) = {
-    this.background = background
-  }
-
-  /**
     * Given an RDD of tokens and their frequencies, compare it against
     * the frequencies in a background model and score keywords by
     * how divergent they are
     *
-    * @param relevant RDD of foreground tokens and counts
+    * @param foreground RDD of foreground tokens and counts
     */
-  def score(relevant : RDD[(String, Int)]) : RDD[(String, Double)] = {
-
-    // Foreground model
-    val foreground = relevant
+  def score(foreground : RDD[(String, Int)], background : RDD[(String, Int)]) : RDD[(String, Double)] = {
 
     // what's the total number of all tokens in both foreground and background models?
     val foreTotal : Double = foreground.map(t => t._2).reduce((l, r) => l + r).toDouble
@@ -126,8 +108,8 @@ object KullbackLeiblerDivergence {
       val token = tup._1
       val freqs = tup._2
 
-      val probFore : Double = tup._2._1
-      val probBack : Double = tup._2._2.getOrElse(1/backTotal) // we default to assuming freq 1 if we don't have this keyword
+      val probFore : Double = freqs._1
+      val probBack : Double = freqs._2.getOrElse(1.0/backTotal) // we default to assuming freq 1 if we don't have this keyword
 
       val klDiv : Double = probFore * (math.log(probFore) - math.log(probBack))
 
