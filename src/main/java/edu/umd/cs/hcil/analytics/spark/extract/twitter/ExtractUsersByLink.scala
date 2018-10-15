@@ -9,7 +9,7 @@ import twitter4j.Status
 /**
   * Created by cbuntain on 4/26/18.
   */
-object FindUsersByLink {
+object ExtractUsersByLink {
   /**
     * @param args the command line arguments
     */
@@ -56,6 +56,6 @@ object FindUsersByLink {
   }
 
   def getUrls(tweet : Status) : Array[String] = {
-    tweet.getURLEntities.filter(urlEntity => urlEntity.getURL.length > 0).map(urlEntity => urlEntity.getUnshortenedURL)
+    tweet.getURLEntities.filter(urlEntity => urlEntity.getURL.length > 0).map(urlEntity => urlEntity.getExpandedURL)
   }
 }
