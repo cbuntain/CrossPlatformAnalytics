@@ -1,8 +1,9 @@
 package edu.umd.cs.hcil.analytics.spark.network.twitter
 
 import edu.umd.cs.hcil.analytics.spark.network.{DefaultGraph, UserNode}
-import org.apache.spark.graphx.{Graph, VertexId, Edge}
+import org.apache.spark.graphx.{Edge, Graph, VertexId}
 import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
 import twitter4j.Status
 
 /**
@@ -11,10 +12,10 @@ import twitter4j.Status
 object RetweetGraph extends DefaultGraph {
 
   def getGraph(tweets : RDD[Status]) : Graph[UserNode, Long] = {
-    return getGraph(tweets, 0)
+    return getGraph(tweets, 0, cacheStrategy = StorageLevel.MEMORY_ONLY)
   }
 
-  def getGraph(tweets : RDD[Status], minDegree: Int) : Graph[UserNode, Long] = {
+  def getGraph(tweets : RDD[Status], minDegree: Int, cacheStrategy : StorageLevel = StorageLevel.MEMORY_ONLY) : Graph[UserNode, Long] = {
 
     // Map retweets to edges, using a reduceByKey operation to merge
     //  retweets between two users, so we can get weights based on
@@ -33,10 +34,7 @@ object RetweetGraph extends DefaultGraph {
       (src, dst, l._3 + r._3)
     }).map(tup => tup._2)
 
-    // Persist the retweet_edges RDD because we need to traverse it twice
-    retweet_edges.cache()
-
-    val graph = edgesToGraph(retweet_edges, minDegree)
+    val graph = edgesToGraph(retweet_edges, minDegree, cacheStrategy)
 
     return graph
   }
