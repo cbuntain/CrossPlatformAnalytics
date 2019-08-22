@@ -44,11 +44,11 @@ object RedditKeywordFinder {
     // Convert each JSON line in the file to a submission
     val textFields : RDD[(String, RedditModel)] = messages.map(line => {
 
-      if ( line.contains("subreddit_id") ) {  // Test for Reddit data
-        val submission : RedditModel = SubmissionParser.parseJson(line)
+      if ( line.contains("parent_id") ) {  // Test for Reddit data. Only comments have parents
+        val submission : RedditModel = CommentParser.parseJson(line)
         (line, submission)
       } else {
-        val comment : RedditModel = CommentParser.parseJson(line)
+        val comment : RedditModel = SubmissionParser.parseJson(line)
         (line, comment)
       }
     }).filter(sub => sub != null && sub._2 != null && sub._2.text.getOrElse("").length > 0)

@@ -1,6 +1,7 @@
 package edu.umd.cs.hcil.analytics.spark.search.twitter
 
 import edu.umd.cs.hcil.models.twitter.TweetParser
+import org.apache.lucene.analysis.core.WhitespaceAnalyzer
 import twitter4j.Status
 import org.apache.lucene.analysis.standard.StandardAnalyzer
 import org.apache.lucene.index.memory.MemoryIndex
@@ -61,24 +62,48 @@ object TwitterQuery {
     // Pseudo-Relevance feedback
     val scoredPairs = statusList.mapPartitions(iter => {
       // Construct an analyzer for our tweet text
-      val analyzer = new StandardAnalyzer()
-      val parser = new StandardQueryParser(analyzer)
+      val textAnalyzer = new StandardAnalyzer()
+      val wsAnalyzer = new WhitespaceAnalyzer()
+      val parser = new StandardQueryParser(wsAnalyzer)
+      parser.setAllowLeadingWildcard(true)
+
+      val parsedQueries = queries.map(q => parser.parse(q, "content"))
 
       // words with spaces between them must appear using the following connective (AND or OR)
       parser.setDefaultOperator(op)
 
       iter.map(pair => {
         val status = pair._2
-        val text = status.getText + ", " + (if ( status.isRetweet ) { status.getRetweetedStatus.getText } else { "" })
+        val text = status.getText + " " + (if ( status.isRetweet ) { status.getRetweetedStatus.getText } else { "" })
 
         // Construct an in-memory index for the tweet data
         val idx = new MemoryIndex()
 
-        idx.addField("content", text.toLowerCase(), analyzer)
+        idx.addField("content", text.toLowerCase(), textAnalyzer)
+        idx.addField("screen_name", status.getUser.getScreenName.toLowerCase(), wsAnalyzer)
+        idx.addField("user_id", status.getUser.getId.toString, wsAnalyzer)
+
+        for ( u <- status.getURLEntities ) {
+          val colonIndex = u.getExpandedURL.indexOf("://")
+          if ( colonIndex >= 0 ) {
+            val url = u.getExpandedURL.substring(colonIndex + 3)
+            idx.addField("url", url, wsAnalyzer)
+          }
+        }
+
+        for ( ht <- status.getHashtagEntities ) {
+          idx.addField("hashtag", ht.getText.toLowerCase(), wsAnalyzer)
+        }
+
+        for ( m <- status.getUserMentionEntities ) {
+          idx.addField("mention", m.getScreenName.toLowerCase(), wsAnalyzer)
+        }
+
+        idx.freeze()
 
         var score = 0.0d
-        for ( q <- queries ) {
-          score = score + idx.search(parser.parse(q, "content"))
+        for ( q <- parsedQueries ) {
+          score = score + idx.search(q)
         }
 
         (pair, score)

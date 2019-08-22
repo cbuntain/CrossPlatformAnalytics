@@ -84,7 +84,7 @@ object TopicModelLDA {
     // Split each document into words
     val tokens = new RegexTokenizer()
       .setGaps(false) // tells the tokenizer to look for tokens matching the pattern rather than finding whitespace
-      .setPattern("#?\\p{L}{4,}+")
+      .setPattern("#?[\\p{L}\\p{N}_.-']+") // \p{L} = utf8 alpha character, \p{N} = number
       .setInputCol("text")
       .setOutputCol("words")
       .transform(docDF)
