@@ -4,6 +4,7 @@ import edu.umd.cs.hcil.models.twitter.TweetParser
 import org.apache.lucene.analysis.core.WhitespaceAnalyzer
 import twitter4j.Status
 import org.apache.lucene.analysis.standard.StandardAnalyzer
+import org.apache.lucene.analysis.fa.PersianAnalyzer
 import org.apache.lucene.index.memory.MemoryIndex
 import org.apache.lucene.queryparser.flexible.standard.StandardQueryParser
 import org.apache.lucene.queryparser.flexible.standard.config.StandardQueryConfigHandler
@@ -47,7 +48,7 @@ object TwitterQuery {
     val textFields : RDD[(String, Status)] = messages.map(line => {
 
       (line, TweetParser.parseJson(line))
-    }).filter(statusTuple => statusTuple != null && statusTuple._2 != null)
+    }).filter(statusTuple => statusTuple != null && statusTuple._2 != null && statusTuple._2.getUser != null && statusTuple._2.getUser.getScreenName != null)
 
     val relevantJson = querier(queries, textFields, 0d).map(pair => pair._1)
 
@@ -82,6 +83,7 @@ object TwitterQuery {
         idx.addField("content", text.toLowerCase(), textAnalyzer)
         idx.addField("screen_name", status.getUser.getScreenName.toLowerCase(), wsAnalyzer)
         idx.addField("user_id", status.getUser.getId.toString, wsAnalyzer)
+        idx.addField("lang", status.getLang, wsAnalyzer)
 
         for ( u <- status.getURLEntities ) {
           val colonIndex = u.getExpandedURL.indexOf("://")
@@ -90,7 +92,7 @@ object TwitterQuery {
             idx.addField("url", url, wsAnalyzer)
           }
         }
-
+4
         for ( ht <- status.getHashtagEntities ) {
           idx.addField("hashtag", ht.getText.toLowerCase(), wsAnalyzer)
         }
